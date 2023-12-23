@@ -55,7 +55,7 @@ class App:
                             <span style="color: red; font-size:18px; font-weight:bold"> Streamlit</span> *
                             <span style="color: red; font-size:18px; font-weight:bold"> EasyOCR</span> *
                             <span style="color: red; font-size:18px; font-weight:bold"> OpenCV</span> *
-                            <span style="color: red; font-size:18px; font-weight:bold"> MySQL</span></p>""",unsafe_allow_html=True)
+                            <span style="color: red; font-size:18px; font-weight:bold"> Postgresql</span></p>""",unsafe_allow_html=True)
                 st.markdown("""
                             <p style="color: black; font-size:18px; font-weight:bold">
                             To Learn more about easyOCR  <span><a style="color: #f2920c; font-size:18px; font-weight:bold" href="https://pypi.org/project/easyocr/">press here</a></span></p> """,unsafe_allow_html=True)
@@ -66,7 +66,7 @@ class App:
             with left:
                 st.markdown("""<p style="color: black; font-size:30px; font-weight:bold">Welcome to the Business Card Application!</p>""",unsafe_allow_html=True)
                 st.divider()
-                st.markdown("""<p style="color: #fc0349; font-size:20px; font-weight:bold"> Bizcard is a Python application designed to extract information from business cards. It utilizes various technologies such as Streamlit, Python, EasyOCR , RegEx function, OpenCV, and MySQL database to achieve this functionality.""",unsafe_allow_html=True)
+                st.markdown("""<p style="color: #fc0349; font-size:20px; font-weight:bold"> Bizcard is a Python application designed to extract information from business cards. It utilizes various technologies such as Streamlit, Python, EasyOCR , RegEx function, OpenCV, and Postgresql database to achieve this functionality.""",unsafe_allow_html=True)
                 st.markdown("""<p style="color: #f28f0c; font-size:20px; font-weight:bold">The main purpose of Bizcard is to automate the process of extracting key details from business card images, such as the name, designation, company, contact information, and other relevant data. By leveraging the power of OCR (Optical Character Recognition) provided by EasyOCR, Bizcard is able to extract text from the images.</p>""",unsafe_allow_html=True)
                 st.markdown("""<p style="color: black; font-size:18px; font-weight:bold">Click on the <span style="color: red; font-size:18px; font-weight:bold">Image to text</span> option to start exploring the Bizcard extraction.</p>""",unsafe_allow_html=True)
     
@@ -79,7 +79,7 @@ class App:
                  designation VARCHAR(255),
                  company VARCHAR(255),
                  contact VARCHAR(30) UNIQUE,
-                 email VARCHAR(255),
+                 email VARCHAR(255) UNIQUE,
                  website VARCHAR(255),
                  address VARCHAR(255),
                  city VARCHAR(255),state VARCHAR(255),pincode VARCHAR(255),
@@ -258,20 +258,20 @@ class App:
             option = option_menu(None, ['Image data', "Update data", "Delete data"],
                                  icons=["image", "pencil-fill", 'exclamation-diamond'], default_index=0)
             
-            cursor.execute("SELECT name,designation FROM card")
+            cursor.execute("SELECT name FROM card")
             rows = cursor.fetchall()
             names = [row[0] for row in rows]   
-            designations = [row[1] for row in rows]
+            
 
             # showing the image for selected name and designation
             if option=='Image data':
                 left, right = st.columns([2, 2.5])
                 with left:
                     selection_name = st.selectbox("Select name", names)     
-                    selection_designation = st.selectbox("Select designation", designations)
+                    
                     if st.button('Show Image'):
                         with right:
-                            cursor.execute("SELECT image FROM card WHERE name = %s AND designation = %s", (selection_name, selection_designation))
+                            cursor.execute("SELECT image FROM card WHERE name = %s", (selection_name,))
                             result = cursor.fetchone()
                                 # Check if image data exists
                             if result is not None:
@@ -281,15 +281,14 @@ class App:
                                 nparr = np.frombuffer(image_data, np.uint8)
                                 image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                                 st.image(image, channels="BGR", use_column_width=True)
-                            if result is None:
-                                st.error("Image not found for the given name and designation.")
+                            
             
             #update data in database for selected name and designation
             elif option=='Update data':
                 col1,col2=st.columns(2)
                 with col1:
                     selection_name = st.selectbox("Select name to update", names)
-                    selection_designation = st.selectbox("Select designation to update", designations)
+                    
                 with col2:
                     # Get the column names from the table
                     cursor.execute("""SELECT column_name
@@ -303,11 +302,11 @@ class App:
                     new_data = st.text_input(f"Enter the new {selection}")
 
                     # Define the SQL query to update the selected rows
-                    sql = f"UPDATE card SET {selection} = %s WHERE name = %s AND designation = %s"
+                    sql = f"UPDATE card SET {selection} = %s WHERE name = %s"
 
                     # Execute the query with the new values
                     if st.button("Update"):
-                        cursor.execute(sql, (new_data, selection_name, selection_designation))
+                        cursor.execute(sql, (new_data, selection_name,))
                         # Commit the changes to the database
                         conn.commit()
                         st.success("updated successfully",icon="👆")
@@ -318,12 +317,9 @@ class App:
                 left,right=st.columns([2,2.5])
                 with left:
                     selection_name = st.selectbox("Select name to delete", names)
-                with right:
-                    selection_designation = st.selectbox("Select designation to delete", designations)
-                with left:
                     if st.button('DELETE'):
-                        sql = "DELETE FROM card WHERE name = %s AND designation = %s"
-                        cursor.execute(sql, (selection_name, selection_designation))
+                        sql = "DELETE FROM card WHERE name = %s"
+                        cursor.execute(sql, (selection_name,))
                         conn.commit()
                         st.success('Deleted successfully',icon='✅')
                 #convert into dataframe using pandas
